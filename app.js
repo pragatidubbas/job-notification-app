@@ -1,36 +1,39 @@
 const routes = {
   "/": {
-    title: "Dashboard",
-    subtitle: "This section will be built in the next step.",
+    title: "Stop Missing The Right Jobs.",
+    subtitle: "Precision-matched job discovery delivered daily at 9AM.",
+    kind: "landing",
   },
   "/dashboard": {
     title: "Dashboard",
-    subtitle: "This section will be built in the next step.",
-  },
-  "/saved": {
-    title: "Saved",
-    subtitle: "This section will be built in the next step.",
-  },
-  "/digest": {
-    title: "Digest",
-    subtitle: "This section will be built in the next step.",
+    subtitle: "No jobs yet. In the next step, you will load a realistic dataset.",
+    kind: "dashboard",
   },
   "/settings": {
     title: "Settings",
-    subtitle: "This section will be built in the next step.",
+    subtitle: "Placeholder preferences for how job tracking will behave.",
+    kind: "settings",
+  },
+  "/saved": {
+    title: "Saved",
+    subtitle: "Clean, premium empty state. No saved roles yet.",
+    kind: "saved",
+  },
+  "/digest": {
+    title: "Digest",
+    subtitle: "Daily summary for your job search will appear here in a later step.",
+    kind: "digest",
   },
   "/proof": {
     title: "Proof",
-    subtitle: "This section will be built in the next step.",
+    subtitle: "Placeholder area for collecting artifacts and evidence.",
+    kind: "proof",
   },
 };
 
 function getRoute(pathname) {
   if (routes[pathname]) {
     return routes[pathname];
-  }
-  if (pathname === "/") {
-    return routes["/"];
   }
   return {
     title: "Page Not Found",
@@ -54,26 +57,169 @@ function renderRoute(pathname) {
 
   outlet.innerHTML = "";
 
-  const container = document.createElement("article");
-  container.className = "card";
+  if (route.isNotFound) {
+    outlet.innerHTML = `
+      <article class="card">
+        <header class="card__header">
+          <h2 class="heading-lg">Page Not Found</h2>
+        </header>
+        <p class="body-md text-max-width">
+          The page you are looking for does not exist.
+        </p>
+      </article>
+    `;
+    updateActiveNav(pathname, true);
+    return;
+  }
 
-  const header = document.createElement("header");
-  header.className = "card__header";
+  if (route.kind === "landing") {
+    outlet.innerHTML = `
+      <article class="card">
+        <header class="card__header">
+          <h2 class="heading-lg">Job Notification Tracker</h2>
+        </header>
+        <div class="card__body">
+          <button class="btn btn--primary" type="button" data-cta-settings>
+            Start Tracking
+          </button>
+        </div>
+      </article>
+    `;
+    const cta = outlet.querySelector("[data-cta-settings]");
+    if (cta) {
+      cta.addEventListener("click", () => {
+        handleNavigation("/settings", false);
+      });
+    }
+    updateActiveNav(pathname, false);
+    return;
+  }
 
-  const heading = document.createElement("h2");
-  heading.className = "heading-lg";
-  heading.textContent = route.title;
+  if (route.kind === "settings") {
+    outlet.innerHTML = `
+      <article class="card">
+        <header class="card__header">
+          <h2 class="heading-lg">Preferences</h2>
+          <p class="body-sm card__subtitle">
+            These fields are placeholders only. No data is saved in this step.
+          </p>
+        </header>
+        <div class="card__body stack stack--24">
+          <section class="stack stack--16">
+            <h3 class="heading-md">Role keywords</h3>
+            <label class="field">
+              <span class="field__label body-sm">Keywords</span>
+              <input class="field__input" type="text" placeholder="e.g. Product Manager, Data Analyst" />
+            </label>
+          </section>
 
-  const bodyP = document.createElement("p");
-  bodyP.className = "body-md text-max-width";
-  bodyP.textContent = route.subtitle;
+          <section class="stack stack--16">
+            <h3 class="heading-md">Preferred locations</h3>
+            <label class="field">
+              <span class="field__label body-sm">Locations</span>
+              <input class="field__input" type="text" placeholder="e.g. London, Berlin, Remote Europe" />
+            </label>
+          </section>
 
-  header.appendChild(heading);
-  container.appendChild(header);
-  container.appendChild(bodyP);
-  outlet.appendChild(container);
+          <section class="stack stack--16">
+            <h3 class="heading-md">Mode</h3>
+            <div class="stack stack--8 body-sm">
+              <label class="check-item">
+                <input type="radio" name="mode" value="remote" />
+                <span>Remote</span>
+              </label>
+              <label class="check-item">
+                <input type="radio" name="mode" value="hybrid" />
+                <span>Hybrid</span>
+              </label>
+              <label class="check-item">
+                <input type="radio" name="mode" value="onsite" />
+                <span>Onsite</span>
+              </label>
+            </div>
+          </section>
 
-  updateActiveNav(pathname, !!route.isNotFound);
+          <section class="stack stack--16">
+            <h3 class="heading-md">Experience level</h3>
+            <label class="field">
+              <span class="field__label body-sm">Level</span>
+              <select class="field__input">
+                <option value="">Select a level</option>
+                <option value="entry">Entry</option>
+                <option value="mid">Mid</option>
+                <option value="senior">Senior</option>
+                <option value="lead">Lead</option>
+              </select>
+            </label>
+          </section>
+        </div>
+      </article>
+    `;
+    updateActiveNav(pathname, false);
+    return;
+  }
+
+  if (route.kind === "dashboard") {
+    outlet.innerHTML = `
+      <article class="card">
+        <header class="card__header">
+          <h2 class="heading-lg">Dashboard</h2>
+        </header>
+        <p class="body-md text-max-width">
+          No jobs yet. In the next step, you will load a realistic dataset.
+        </p>
+      </article>
+    `;
+    updateActiveNav(pathname, false);
+    return;
+  }
+
+  if (route.kind === "saved") {
+    outlet.innerHTML = `
+      <article class="card">
+        <header class="card__header">
+          <h2 class="heading-lg">Saved jobs</h2>
+        </header>
+        <p class="body-md text-max-width">
+          No saved jobs yet. When you save roles, they will appear here.
+        </p>
+      </article>
+    `;
+    updateActiveNav(pathname, false);
+    return;
+  }
+
+  if (route.kind === "digest") {
+    outlet.innerHTML = `
+      <article class="card">
+        <header class="card__header">
+          <h2 class="heading-lg">Daily digest</h2>
+        </header>
+        <p class="body-md text-max-width">
+          No digests generated yet. Daily summaries will be introduced in a later step.
+        </p>
+      </article>
+    `;
+    updateActiveNav(pathname, false);
+    return;
+  }
+
+  if (route.kind === "proof") {
+    outlet.innerHTML = `
+      <article class="card">
+        <header class="card__header">
+          <h2 class="heading-lg">Proof</h2>
+        </header>
+        <p class="body-md text-max-width">
+          This page will collect artifacts and evidence in a later step.
+        </p>
+      </article>
+    `;
+    updateActiveNav(pathname, false);
+    return;
+  }
+
+  updateActiveNav(pathname, false);
 }
 
 function updateActiveNav(pathname, isNotFound) {
@@ -89,7 +235,7 @@ function updateActiveNav(pathname, isNotFound) {
   let matched = null;
   links.forEach((link) => {
     const route = link.getAttribute("data-route");
-    if (route === pathname || (pathname === "/" && route === "/dashboard")) {
+    if (route === pathname) {
       matched = link;
     }
   });
@@ -121,7 +267,7 @@ function setupNav() {
       if (!route) return;
 
       const currentPath = window.location.pathname || "/";
-      if (currentPath === route || (route === "/dashboard" && currentPath === "/")) {
+      if (currentPath === route) {
         return;
       }
 
