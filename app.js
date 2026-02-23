@@ -904,6 +904,8 @@ const JOBS = [
 const JOBS_BY_ID = new Map(JOBS.map((job) => [job.id, job]));
 const STORAGE_KEY_SAVED = "jobNotificationTracker.savedJobIds";
 const STORAGE_KEY_PREFS = "jobTrackerPreferences";
+const STORAGE_KEY_STATUSES = "jobNotificationTracker.jobStatuses";
+const STORAGE_KEY_STATUS_LOGS = "jobNotificationTracker.statusLogs";
 
 const UNIQUE_LOCATIONS = Array.from(new Set(JOBS.map((j) => j.location))).sort();
 const UNIQUE_MODES = Array.from(new Set(JOBS.map((j) => j.mode)));
@@ -918,6 +920,7 @@ let currentFilters = {
   source: "",
   sort: "latest",
   onlyMatches: false,
+  status: "",
 };
 
 let currentPreferences = null;
@@ -1068,6 +1071,16 @@ function renderRoute(pathname) {
           </select>
         </div>
         <div class="filter-bar__group" style="min-width: 140px;">
+          <label class="filter-bar__label">Status</label>
+          <select id="filter-status" class="filter-bar__control">
+            <option value="">All Status</option>
+            <option value="Not Applied" ${currentFilters.status === 'Not Applied' ? 'selected' : ''}>Not Applied</option>
+            <option value="Applied" ${currentFilters.status === 'Applied' ? 'selected' : ''}>Applied</option>
+            <option value="Rejected" ${currentFilters.status === 'Rejected' ? 'selected' : ''}>Rejected</option>
+            <option value="Selected" ${currentFilters.status === 'Selected' ? 'selected' : ''}>Selected</option>
+          </select>
+        </div>
+        <div class="filter-bar__group" style="min-width: 140px;">
           <label class="filter-bar__label">Mode</label>
           <select id="filter-mode" class="filter-bar__control">
             <option value="">All Modes</option>
@@ -1148,6 +1161,36 @@ function renderDigestPage(outlet) {
 
   const today = new Date().toISOString().split('T')[0];
   const storedDigest = loadDigest(today);
+  const statusLogs = loadStatusLogs().slice(0, 5); // Get last 5
+
+  let logsHtml = `
+    <article class="card" style="margin-top: 40px;">
+       <header class="card__header">
+         <h2 class="heading-lg">Recent Status Updates</h2>
+       </header>
+       <div class="card__body">
+         ${statusLogs.length === 0 ? '<p class="body-sm">No recent updates yet.</p>' : `
+           <div class="stack stack--16">
+             ${statusLogs.map(log => {
+    const job = JOBS_BY_ID.get(log.jobId);
+    return `
+                 <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--color-border-subtle);">
+                   <div>
+                     <p class="body-md" style="font-weight:600; margin:0">${job ? job.title : 'Deleted Job'}</p>
+                     <p class="body-sm" style="margin:0">${job ? job.company : '--'}</p>
+                   </div>
+                   <div style="text-align: right;">
+                     <span class="badge ${getStatusBadgeClass(log.status)}">${log.status}</span>
+                     <p class="body-sm" style="margin-top:4px">${new Date(log.timestamp).toLocaleDateString()}</p>
+                   </div>
+                 </div>
+               `;
+  }).join('')}
+           </div>
+         `}
+       </div>
+    </article>
+  `;
 
   if (!storedDigest) {
     outlet.innerHTML = `
@@ -1160,9 +1203,10 @@ function renderDigestPage(outlet) {
            <p class="simulation-note">Demo Mode: Daily 9AM trigger simulated manually.</p>
         </div>
       </div>
+      ${logsHtml}
     `;
   } else {
-    renderDigestContent(outlet, storedDigest);
+    renderDigestContent(outlet, storedDigest, logsHtml);
   }
 }
 
@@ -1200,7 +1244,7 @@ function generateAndRenderDigest() {
   renderRoute('/digest');
 }
 
-function renderDigestContent(outlet, digest) {
+function renderDigestContent(outlet, digest, logsHtml) {
   const dateStr = new Date(digest.date).toLocaleDateString('en-IN', {
     weekday: 'long',
     year: 'numeric',
@@ -1240,6 +1284,7 @@ function renderDigestContent(outlet, digest) {
        <button class="btn btn--secondary" onclick="copyDigestToClipboard()">Copy Digest to Clipboard</button>
        <button class="btn btn--primary" onclick="createEmailDraft()">Create Email Draft</button>
     </div>
+    ${logsHtml}
   `;
 }
 
@@ -1256,7 +1301,7 @@ function copyDigestToClipboard() {
   const footer = `\nGenerated via Job Notification Tracker.`;
 
   navigator.clipboard.writeText(header + text + footer).then(() => {
-    alert('Digest copied to clipboard!');
+    toast("Digest copied to clipboard!");
   });
 }
 
@@ -1350,11 +1395,13 @@ function computeScoresForJobs(jobs, prefs) {
   }));
 }
 
-function getScoreBadgeClass(score) {
-  if (score >= 80) return 'badge--score-strong';
-  if (score >= 60) return 'badge--score-medium';
-  if (score >= 40) return 'badge--score-light';
-  return 'badge--score-muted';
+function getStatusBadgeClass(status) {
+  switch (status) {
+    case "Applied": return "badge--status-applied";
+    case "Rejected": return "badge--status-rejected";
+    case "Selected": return "badge--status-selected";
+    default: return "badge--status-not-applied";
+  }
 }
 
 function renderJobsList(scoredJobs, savedIdsSet) {
@@ -1368,9 +1415,12 @@ function renderJobsList(scoredJobs, savedIdsSet) {
     `;
   }
 
+  const statuses = loadJobStatuses();
+
   return scoredJobs.map(({ job, score }) => {
     const isSaved = savedIdsSet.has(job.id);
     const postedLabel = job.postedDaysAgo === 0 ? "Today" : `${job.postedDaysAgo}d ago`;
+    const status = statuses[job.id] || "Not Applied";
 
     return `
       <article class="card job-card" data-job-id="${job.id}">
@@ -1381,8 +1431,8 @@ function renderJobsList(scoredJobs, savedIdsSet) {
           </div>
           <div class="job-card__badge-stack">
             <div style="display: flex; gap: 8px;">
+               <span class="badge ${getStatusBadgeClass(status)}">${status}</span>
                <span class="badge ${getScoreBadgeClass(score)}">${score}% match</span>
-               <span class="badge badge--source">${job.source}</span>
             </div>
             <span class="badge badge--days">${postedLabel}</span>
           </div>
@@ -1395,6 +1445,16 @@ function renderJobsList(scoredJobs, savedIdsSet) {
              <span>Salary: <strong>${job.salaryRange}</strong></span>
           </div>
         </div>
+        
+        <div style="margin: 16px 0; border-top: 1px solid var(--color-border-subtle); padding-top: 16px;">
+          <label class="body-sm" style="display: block; margin-bottom: 8px;">Track Status</label>
+          <div class="status-group">
+            <button class="status-btn ${status === 'Applied' ? 'status-btn--active' : ''}" data-action="set-status" data-id="${job.id}" data-status="Applied">Applied</button>
+            <button class="status-btn ${status === 'Rejected' ? 'status-btn--active' : ''}" data-action="set-status" data-id="${job.id}" data-status="Rejected">Rejected</button>
+            <button class="status-btn ${status === 'Selected' ? 'status-btn--active' : ''}" data-action="set-status" data-id="${job.id}" data-status="Selected">Selected</button>
+          </div>
+        </div>
+
         <div class="job-card__actions">
           <button class="btn btn--secondary" data-action="view" data-id="${job.id}">View Details</button>
           <button class="btn btn--secondary" data-action="save" data-id="${job.id}" ${isSaved ? 'disabled' : ''}>
@@ -1408,7 +1468,7 @@ function renderJobsList(scoredJobs, savedIdsSet) {
 }
 
 function setupFilterEvents() {
-  const ids = ['keyword', 'location', 'mode', 'experience', 'sort', 'only-matches'];
+  const ids = ['keyword', 'location', 'mode', 'experience', 'sort', 'only-matches', 'status'];
   ids.forEach(id => {
     const el = document.getElementById(`filter-${id}`);
     if (el) {
@@ -1437,12 +1497,13 @@ function refreshJobs() {
 function parseSalary(salaryStr) {
   const matches = salaryStr.match(/(\d+)/g);
   if (!matches) return 0;
-  // If it's a range like 10-18, take midpoint. If internship like 15k, take 15.
   if (matches.length >= 2) return (parseInt(matches[0]) + parseInt(matches[1])) / 2;
   return parseInt(matches[0]);
 }
 
 function applyFilters(scoredJobs, filters, prefs) {
+  const statuses = loadJobStatuses();
+
   let result = scoredJobs.filter(({ job, score }) => {
     const matchesKeyword = !filters.keyword ||
       job.title.toLowerCase().includes(filters.keyword.toLowerCase()) ||
@@ -1450,14 +1511,16 @@ function applyFilters(scoredJobs, filters, prefs) {
     const matchesLoc = !filters.location || job.location === filters.location;
     const matchesMode = !filters.mode || job.mode === filters.mode;
     const matchesExp = !filters.experience || job.experience === filters.experience;
-    const matchesSource = !filters.source || job.source === filters.source;
+
+    const jobStatus = statuses[job.id] || "Not Applied";
+    const matchesStatus = !filters.status || jobStatus === filters.status;
 
     let matchesThreshold = true;
     if (filters.onlyMatches && prefs) {
       matchesThreshold = score >= (prefs.minMatchScore || 0);
     }
 
-    return matchesKeyword && matchesLoc && matchesMode && matchesExp && matchesSource && matchesThreshold;
+    return matchesKeyword && matchesLoc && matchesMode && matchesExp && matchesThreshold && matchesStatus;
   });
 
   if (filters.sort === "latest") {
@@ -1488,9 +1551,66 @@ function attachJobEvents(container) {
       saveJob(jobId);
       btn.textContent = "Saved";
       btn.disabled = true;
+      toast("Job saved successfully");
     }
     if (action === "apply") window.open(job.applyUrl, "_blank", "noopener");
+    if (action === "set-status") {
+      const status = btn.dataset.status;
+      setJobStatus(jobId, status);
+    }
   });
+}
+
+function setJobStatus(jobId, status) {
+  const statuses = loadJobStatuses();
+  const currentStatus = statuses[jobId] || "Not Applied";
+
+  // Toggle if clicking same status
+  const nextStatus = (currentStatus === status) ? "Not Applied" : status;
+
+  statuses[jobId] = nextStatus;
+  localStorage.setItem(STORAGE_KEY_STATUSES, JSON.stringify(statuses));
+
+  // Log change
+  const logs = loadStatusLogs();
+  logs.unshift({
+    jobId,
+    status: nextStatus,
+    timestamp: Date.now()
+  });
+  localStorage.setItem(STORAGE_KEY_STATUS_LOGS, JSON.stringify(logs.slice(0, 50)));
+
+  toast(`Status updated: ${nextStatus}`);
+  refreshJobs();
+}
+
+function toast(message) {
+  let container = document.querySelector('.toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+
+  const toastEl = document.createElement('div');
+  toastEl.className = 'toast';
+  toastEl.textContent = message;
+  container.appendChild(toastEl);
+
+  setTimeout(() => {
+    toastEl.remove();
+    if (container.children.length === 0) container.remove();
+  }, 3000);
+}
+
+function loadJobStatuses() {
+  const raw = localStorage.getItem(STORAGE_KEY_STATUSES);
+  return raw ? JSON.parse(raw) : {};
+}
+
+function loadStatusLogs() {
+  const raw = localStorage.getItem(STORAGE_KEY_STATUS_LOGS);
+  return raw ? JSON.parse(raw) : [];
 }
 
 function openJobModal(job) {

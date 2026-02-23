@@ -24,6 +24,9 @@
   /* related to accent, not neon */
   --color-error-soft: rgba(122, 31, 31, 0.1);
 
+  --color-info: #004A99;
+  --color-info-soft: rgba(0, 74, 153, 0.1);
+
   /* Typography */
   --font-serif: "Georgia", "Times New Roman", serif;
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -415,6 +418,30 @@ body {
   color: var(--color-text-soft);
 }
 
+/* Status Badges */
+.badge--status-not-applied {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-muted);
+}
+
+.badge--status-applied {
+  border-color: var(--color-info);
+  background-color: var(--color-info-soft);
+  color: var(--color-info);
+}
+
+.badge--status-rejected {
+  border-color: var(--color-error);
+  background-color: var(--color-error-soft);
+  color: var(--color-error);
+}
+
+.badge--status-selected {
+  border-color: var(--color-success);
+  background-color: var(--color-success-soft);
+  color: var(--color-success);
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -703,6 +730,98 @@ body {
 .field__range {
   flex: 1;
   accent-color: var(--color-accent);
+}
+
+/* Toast Notification */
+.toast-container {
+  position: fixed;
+  bottom: var(--space-24);
+  right: var(--space-24);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.toast {
+  background-color: var(--color-text);
+  color: #ffffff;
+  padding: var(--space-16) var(--space-24);
+  border-radius: var(--radius-md);
+  font-size: var(--text-size-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideInUp 0.3s ease-out, fadeOut 0.3s ease-in 2.7s forwards;
+  pointer-events: none;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+/* Status Button Group */
+.status-group {
+  display: flex;
+  gap: 1px;
+  background-color: var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+}
+
+.status-btn {
+  background-color: var(--color-surface);
+  border: none;
+  padding: 0 12px;
+  height: 32px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--color-text-soft);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.status-btn:hover {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+.status-btn--active {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.status-btn--active[data-status="Applied"] {
+  background-color: var(--color-info-soft);
+  color: var(--color-info);
+}
+
+.status-btn--active[data-status="Rejected"] {
+  background-color: var(--color-error-soft);
+  color: var(--color-error);
+}
+
+.status-btn--active[data-status="Selected"] {
+  background-color: var(--color-success-soft);
+  color: var(--color-success);
 }
 
 /* Digest Layout (Email Style) */
