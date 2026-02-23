@@ -388,22 +388,23 @@ body {
 /* Match score badges */
 .badge--score {
   border-radius: var(--radius-md);
+  font-weight: 600;
 }
 
 .badge--score-strong {
-  border-color: var(--color-success-soft);
-  background-color: var(--color-success-soft);
-  color: var(--color-success);
+  border-color: #2F5D50;
+  background-color: rgba(47, 93, 80, 0.1);
+  color: #2F5D50;
 }
 
 .badge--score-medium {
-  border-color: var(--color-warning-soft);
-  background-color: var(--color-warning-soft);
-  color: var(--color-warning);
+  border-color: #B38B2B;
+  background-color: rgba(179, 139, 43, 0.1);
+  color: #B38B2B;
 }
 
 .badge--score-light {
-  border-color: var(--color-border-subtle);
+  border-color: var(--color-border-strong);
   background-color: var(--color-surface);
   color: var(--color-text-muted);
 }
@@ -678,6 +679,32 @@ body {
   text-align: center;
 }
 
+.jobs-banner {
+  padding: var(--space-16) var(--space-24);
+  background-color: var(--color-accent-soft);
+  border-left: 4px solid var(--color-accent);
+  color: var(--color-accent);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-24);
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.slider-row__value {
+  min-width: 3ch;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.field__range {
+  flex: 1;
+  accent-color: var(--color-accent);
+}
+
 /* Filter bar */
 .filter-bar {
   display: flex;
@@ -723,6 +750,22 @@ body {
   outline: none;
   border-color: var(--color-accent);
   box-shadow: 0 0 0 1px var(--color-accent-soft);
+}
+
+.filter-bar__toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  font-size: var(--text-size-sm);
+  color: var(--color-text-muted);
+}
+
+.filter-bar__toggle-input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-accent);
 }
 
 /* Jobs list */

@@ -903,6 +903,7 @@ const JOBS = [
 
 const JOBS_BY_ID = new Map(JOBS.map((job) => [job.id, job]));
 const STORAGE_KEY_SAVED = "jobNotificationTracker.savedJobIds";
+const STORAGE_KEY_PREFS = "jobTrackerPreferences";
 
 const UNIQUE_LOCATIONS = Array.from(new Set(JOBS.map((j) => j.location))).sort();
 const UNIQUE_MODES = Array.from(new Set(JOBS.map((j) => j.mode)));
@@ -916,7 +917,10 @@ let currentFilters = {
   experience: "",
   source: "",
   sort: "latest",
+  onlyMatches: false,
 };
+
+let currentPreferences = null;
 
 const routes = {
   "/": {
@@ -934,6 +938,11 @@ const routes = {
     subtitle: "Roles you've marked for follow-up.",
     kind: "saved",
   },
+  "/settings": {
+    title: "Your Preferences",
+    subtitle: "Define your criteria for intelligent match scoring.",
+    kind: "settings",
+  },
 };
 
 function getRoute(pathname) {
@@ -941,6 +950,7 @@ function getRoute(pathname) {
 }
 
 function renderRoute(pathname) {
+  currentPreferences = loadPreferences();
   const route = getRoute(pathname);
   const outlet = document.getElementById("route-outlet");
   const ctxTitle = document.getElementById("context-title");
@@ -971,50 +981,114 @@ function renderRoute(pathname) {
         </div>
       </article>
     `;
-  } else if (route.kind === "dashboard") {
-    const savedIds = new Set(getSavedJobIds());
-    const filteredJobs = applyFilters(JOBS, currentFilters);
-    
+  } else if (route.kind === "settings") {
+    const prefs = currentPreferences || { minMatchScore: 40 };
     outlet.innerHTML = `
+      <article class="card">
+        <header class="card__header">
+          <h2 class="heading-lg">Job Preferences</h2>
+          <p class="body-sm">We use these to calculate match scores for every role.</p>
+        </header>
+        <div class="card__body stack stack--24">
+          <div class="field">
+            <label class="field__label">Target Roles (comma-separated)</label>
+            <input type="text" id="pref-role-keywords" class="field__input" placeholder="e.g. SDE, Frontend, Intern" value="${prefs.roleKeywords || ''}">
+          </div>
+          
+          <div class="field">
+            <label class="field__label">Preferred Locations</label>
+            <select id="pref-locations" class="field__input" multiple style="height: auto; min-height: 100px; padding: 10px;">
+              ${UNIQUE_LOCATIONS.map(l => `<option value="${l}" ${prefs.preferredLocations?.includes(l) ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="field">
+            <label class="field__label">Work Mode</label>
+            <div class="stack stack--8">
+              ${UNIQUE_MODES.map(m => `
+                <label class="check-item">
+                  <input type="checkbox" name="pref-mode" value="${m}" ${prefs.preferredMode?.includes(m) ? 'checked' : ''}>
+                  <span>${m}</span>
+                </label>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field__label">Experience Level</label>
+            <select id="pref-experience" class="field__input">
+              <option value="">Select Level</option>
+              ${UNIQUE_EXPERIENCE.map(e => `<option value="${e}" ${prefs.experienceLevel === e ? 'selected' : ''}>${e}</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="field">
+            <label class="field__label">Key Skills (comma-separated)</label>
+            <input type="text" id="pref-skills" class="field__input" placeholder="e.g. React, Java, SQL" value="${prefs.skills || ''}">
+          </div>
+
+          <div class="field">
+            <label class="field__label">Minimum Match Threshold (%)</label>
+            <div class="slider-row">
+              <input type="range" id="pref-min-score" class="field__range" min="0" max="100" value="${prefs.minMatchScore}">
+              <span id="pref-min-score-val" class="slider-row__value">${prefs.minMatchScore}%</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 24px;">
+            <button class="btn btn--primary" id="save-prefs">Save Preferences</button>
+          </div>
+        </div>
+      </article>
+    `;
+    setupPreferencesInteractions();
+  } else if (route.kind === "dashboard") {
+    const scoredJobs = computeScoresForJobs(JOBS, currentPreferences);
+    const filteredJobs = applyFilters(scoredJobs, currentFilters, currentPreferences);
+    const savedIds = new Set(getSavedJobIds());
+
+    outlet.innerHTML = `
+      ${!currentPreferences ? '<div class="jobs-banner body-md">Set your <a href="/settings" onclick="event.preventDefault(); handleNavigation(\'/settings\')">preferences</a> to activate intelligent matching.</div>' : ''}
+      
       <section class="filter-bar">
         <div class="filter-bar__group">
           <label class="filter-bar__label">Search</label>
           <input id="filter-keyword" class="filter-bar__control" type="text" placeholder="Title or company..." value="${currentFilters.keyword}">
         </div>
-        <div class="filter-bar__group">
+        <div class="filter-bar__group" style="min-width: 140px;">
           <label class="filter-bar__label">Location</label>
           <select id="filter-location" class="filter-bar__control">
             <option value="">All Regions</option>
             ${UNIQUE_LOCATIONS.map(l => `<option value="${l}" ${currentFilters.location === l ? 'selected' : ''}>${l}</option>`).join('')}
           </select>
         </div>
-        <div class="filter-bar__group">
+        <div class="filter-bar__group" style="min-width: 140px;">
           <label class="filter-bar__label">Mode</label>
           <select id="filter-mode" class="filter-bar__control">
             <option value="">All Modes</option>
             ${UNIQUE_MODES.map(m => `<option value="${m}" ${currentFilters.mode === m ? 'selected' : ''}>${m}</option>`).join('')}
           </select>
         </div>
-        <div class="filter-bar__group">
+        <div class="filter-bar__group" style="min-width: 140px;">
           <label class="filter-bar__label">Experience</label>
           <select id="filter-experience" class="filter-bar__control">
             <option value="">All Levels</option>
             ${UNIQUE_EXPERIENCE.map(e => `<option value="${e}" ${currentFilters.experience === e ? 'selected' : ''}>${e}</option>`).join('')}
           </select>
         </div>
-        <div class="filter-bar__group">
-          <label class="filter-bar__label">Source</label>
-          <select id="filter-source" class="filter-bar__control">
-            <option value="">All Sources</option>
-            ${UNIQUE_SOURCES.map(s => `<option value="${s}" ${currentFilters.source === s ? 'selected' : ''}>${s}</option>`).join('')}
-          </select>
-        </div>
-        <div class="filter-bar__group">
+        <div class="filter-bar__group" style="min-width: 140px;">
           <label class="filter-bar__label">Sort</label>
           <select id="filter-sort" class="filter-bar__control">
             <option value="latest" ${currentFilters.sort === 'latest' ? 'selected' : ''}>Latest First</option>
-            <option value="oldest" ${currentFilters.sort === 'oldest' ? 'selected' : ''}>Oldest First</option>
+            <option value="score" ${currentFilters.sort === 'score' ? 'selected' : ''}>Match Score</option>
+            <option value="salary" ${currentFilters.sort === 'salary' ? 'selected' : ''}>Salary</option>
           </select>
+        </div>
+        <div class="filter-bar__group" style="justify-content: flex-end; padding-bottom: 8px;">
+          <label class="filter-bar__toggle-label">
+            <input type="checkbox" id="filter-only-matches" class="filter-bar__toggle-input" ${currentFilters.onlyMatches ? 'checked' : ''}>
+            <span>Show only matches</span>
+          </label>
         </div>
       </section>
       <section class="jobs-list" id="jobs-list">
@@ -1026,8 +1100,9 @@ function renderRoute(pathname) {
   } else if (route.kind === "saved") {
     const savedIds = getSavedJobIds();
     const savedJobs = JOBS.filter(j => savedIds.includes(j.id));
-    
-    if (savedJobs.length === 0) {
+    const scoredSaved = computeScoresForJobs(savedJobs, currentPreferences);
+
+    if (scoredSaved.length === 0) {
       outlet.innerHTML = `
         <div class="jobs-list__empty">
           <div class="empty-state__icon">🔖</div>
@@ -1041,7 +1116,7 @@ function renderRoute(pathname) {
     } else {
       outlet.innerHTML = `
         <section class="jobs-list" id="saved-jobs-list">
-          ${renderJobsList(savedJobs, new Set(savedIds))}
+          ${renderJobsList(scoredSaved, new Set(savedIds))}
         </section>
       `;
       attachJobEvents(document.getElementById("saved-jobs-list"));
@@ -1051,12 +1126,91 @@ function renderRoute(pathname) {
   updateActiveNav(pathname);
 }
 
-function renderJobsList(jobs, savedIdsSet) {
-  if (jobs.length === 0) {
-    return `<div class="jobs-list__empty"><p class="body-md">No jobs match your search.</p></div>`;
+function setupPreferencesInteractions() {
+  const slider = document.getElementById('pref-min-score');
+  const val = document.getElementById('pref-min-score-val');
+  if (slider && val) {
+    slider.oninput = () => val.textContent = `${slider.value}%`;
   }
 
-  return jobs.map(job => {
+  const saveBtn = document.getElementById('save-prefs');
+  if (saveBtn) {
+    saveBtn.onclick = () => {
+      const prefs = {
+        roleKeywords: document.getElementById('pref-role-keywords').value,
+        preferredLocations: Array.from(document.getElementById('pref-locations').selectedOptions).map(o => o.value),
+        preferredMode: Array.from(document.querySelectorAll('input[name="pref-mode"]:checked')).map(el => el.value),
+        experienceLevel: document.getElementById('pref-experience').value,
+        skills: document.getElementById('pref-skills').value,
+        minMatchScore: parseInt(slider.value)
+      };
+      savePreferences(prefs);
+      alert('Preferences saved successfully!');
+      handleNavigation('/dashboard');
+    };
+  }
+}
+
+function computeMatchScore(job, prefs) {
+  if (!prefs) return 0;
+  let score = 0;
+
+  // Rule 1: Role Keywords
+  const keywords = prefs.roleKeywords.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+  if (keywords.length) {
+    if (keywords.some(kw => job.title.toLowerCase().includes(kw))) score += 25;
+    if (keywords.some(kw => job.description.toLowerCase().includes(kw))) score += 15;
+  }
+
+  // Rule 2: Locations
+  if (prefs.preferredLocations?.includes(job.location)) score += 15;
+
+  // Rule 3: Mode
+  if (prefs.preferredMode?.includes(job.mode)) score += 10;
+
+  // Rule 4: Experience
+  if (prefs.experienceLevel === job.experience) score += 10;
+
+  // Rule 5: Skills overlap
+  const userSkills = prefs.skills.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+  const jobSkills = job.skills.map(s => s.toLowerCase());
+  if (userSkills.some(s => jobSkills.includes(s))) score += 15;
+
+  // Rule 6: Recency
+  if (job.postedDaysAgo <= 2) score += 5;
+
+  // Rule 7: Source
+  if (job.source.toLowerCase() === 'linkedin') score += 5;
+
+  return Math.min(score, 100);
+}
+
+function computeScoresForJobs(jobs, prefs) {
+  return jobs.map(job => ({
+    job,
+    score: computeMatchScore(job, prefs)
+  }));
+}
+
+function getScoreBadgeClass(score) {
+  if (score >= 80) return 'badge--score-strong';
+  if (score >= 60) return 'badge--score-medium';
+  if (score >= 40) return 'badge--score-light';
+  return 'badge--score-muted';
+}
+
+function renderJobsList(scoredJobs, savedIdsSet) {
+  if (scoredJobs.length === 0) {
+    return `
+      <div class="jobs-list__empty">
+        <div class="empty-state__icon">🔍</div>
+        <h2 class="heading-lg">No roles match your criteria</h2>
+        <p class="body-md">Adjust filters or lower your threshold to see more opportunities.</p>
+      </div>
+    `;
+  }
+
+  return scoredJobs.map(({ job, score }) => {
     const isSaved = savedIdsSet.has(job.id);
     const postedLabel = job.postedDaysAgo === 0 ? "Today" : `${job.postedDaysAgo}d ago`;
 
@@ -1068,7 +1222,10 @@ function renderJobsList(jobs, savedIdsSet) {
             <p class="job-card__company">${job.company} • ${job.location} • ${job.mode}</p>
           </div>
           <div class="job-card__badge-stack">
-            <span class="badge badge--source">${job.source}</span>
+            <div style="display: flex; gap: 8px;">
+               <span class="badge ${getScoreBadgeClass(score)}">${score}% match</span>
+               <span class="badge badge--source">${job.source}</span>
+            </div>
             <span class="badge badge--days">${postedLabel}</span>
           </div>
         </header>
@@ -1093,12 +1250,17 @@ function renderJobsList(jobs, savedIdsSet) {
 }
 
 function setupFilterEvents() {
-  const inputs = ['keyword', 'location', 'mode', 'experience', 'source', 'sort'];
-  inputs.forEach(id => {
+  const ids = ['keyword', 'location', 'mode', 'experience', 'sort', 'only-matches'];
+  ids.forEach(id => {
     const el = document.getElementById(`filter-${id}`);
     if (el) {
-      el.addEventListener(id === 'keyword' ? 'input' : 'change', () => {
-        currentFilters[id] = el.value.trim();
+      const event = (id === 'keyword') ? 'input' : 'change';
+      el.addEventListener(event, () => {
+        if (id === 'only-matches') {
+          currentFilters.onlyMatches = el.checked;
+        } else {
+          currentFilters[id.replace('filter-', '')] = el.value.trim();
+        }
         refreshJobs();
       });
     }
@@ -1108,28 +1270,46 @@ function setupFilterEvents() {
 function refreshJobs() {
   const list = document.getElementById("jobs-list");
   if (!list) return;
-  const filtered = applyFilters(JOBS, currentFilters);
+  const scored = computeScoresForJobs(JOBS, currentPreferences);
+  const filtered = applyFilters(scored, currentFilters, currentPreferences);
   const savedIds = new Set(getSavedJobIds());
   list.innerHTML = renderJobsList(filtered, savedIds);
 }
 
-function applyFilters(jobs, filters) {
-  let result = jobs.filter(job => {
-    const matchesKeyword = !filters.keyword || 
-      job.title.toLowerCase().includes(filters.keyword.toLowerCase()) || 
+function parseSalary(salaryStr) {
+  const matches = salaryStr.match(/(\d+)/g);
+  if (!matches) return 0;
+  // If it's a range like 10-18, take midpoint. If internship like 15k, take 15.
+  if (matches.length >= 2) return (parseInt(matches[0]) + parseInt(matches[1])) / 2;
+  return parseInt(matches[0]);
+}
+
+function applyFilters(scoredJobs, filters, prefs) {
+  let result = scoredJobs.filter(({ job, score }) => {
+    const matchesKeyword = !filters.keyword ||
+      job.title.toLowerCase().includes(filters.keyword.toLowerCase()) ||
       job.company.toLowerCase().includes(filters.keyword.toLowerCase());
     const matchesLoc = !filters.location || job.location === filters.location;
     const matchesMode = !filters.mode || job.mode === filters.mode;
     const matchesExp = !filters.experience || job.experience === filters.experience;
     const matchesSource = !filters.source || job.source === filters.source;
-    
-    return matchesKeyword && matchesLoc && matchesMode && matchesExp && matchesSource;
+
+    let matchesThreshold = true;
+    if (filters.onlyMatches && prefs) {
+      matchesThreshold = score >= (prefs.minMatchScore || 0);
+    }
+
+    return matchesKeyword && matchesLoc && matchesMode && matchesExp && matchesSource && matchesThreshold;
   });
 
   if (filters.sort === "latest") {
-    result.sort((a, b) => a.postedDaysAgo - b.postedDaysAgo);
-  } else {
-    result.sort((a, b) => b.postedDaysAgo - a.postedDaysAgo);
+    result.sort((a, b) => a.job.postedDaysAgo - b.job.postedDaysAgo);
+  } else if (filters.sort === "oldest") {
+    result.sort((a, b) => b.job.postedDaysAgo - a.job.postedDaysAgo);
+  } else if (filters.sort === "score") {
+    result.sort((a, b) => b.score - a.score);
+  } else if (filters.sort === "salary") {
+    result.sort((a, b) => parseSalary(b.job.salaryRange) - parseSalary(a.job.salaryRange));
   }
 
   return result;
@@ -1193,6 +1373,15 @@ function saveJob(id) {
     ids.push(id);
     localStorage.setItem(STORAGE_KEY_SAVED, JSON.stringify(ids));
   }
+}
+
+function loadPreferences() {
+  const raw = localStorage.getItem(STORAGE_KEY_PREFS);
+  return raw ? JSON.parse(raw) : null;
+}
+
+function savePreferences(prefs) {
+  localStorage.setItem(STORAGE_KEY_PREFS, JSON.stringify(prefs));
 }
 
 function handleNavigation(pathname) {
