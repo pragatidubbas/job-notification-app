@@ -705,7 +705,73 @@ body {
   accent-color: var(--color-accent);
 }
 
-/* Filter bar */
+/* Digest Layout (Email Style) */
+.digest-email {
+  background-color: #FFFFFF;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  margin: 0 auto;
+  max-width: 720px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.digest-email__header {
+  padding: var(--space-40) var(--space-40) var(--space-24);
+  border-bottom: 1px solid var(--color-border-subtle);
+  text-align: center;
+}
+
+.digest-email__body {
+  padding: var(--space-24) var(--space-40);
+}
+
+.digest-email__footer {
+  padding: var(--space-24) var(--space-40);
+  background-color: var(--color-bg);
+  border-top: 1px solid var(--color-border-subtle);
+  text-align: center;
+  font-size: var(--text-size-sm);
+  color: var(--color-text-soft);
+}
+
+.digest-item {
+  padding: var(--space-24) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.digest-item:last-child {
+  border-bottom: none;
+}
+
+.digest-item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-8);
+}
+
+.digest-item__meta {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+  margin-bottom: var(--space-16);
+}
+
+.simulation-note {
+  font-size: var(--text-size-sm);
+  color: var(--color-text-soft);
+  font-style: italic;
+  margin-top: var(--space-16);
+  opacity: 0.8;
+}
+
+.digest-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-16);
+  margin-top: var(--space-40);
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
