@@ -951,6 +951,16 @@ const routes = {
     subtitle: "Define your criteria for intelligent match scoring.",
     kind: "settings",
   },
+  "/jt/07-test": {
+    title: "QA Checklist",
+    subtitle: "Verify system integrity before distribution.",
+    kind: "test",
+  },
+  "/jt/08-ship": {
+    title: "Release Portal",
+    subtitle: "Finalize and distribute the application.",
+    kind: "ship",
+  },
 };
 
 function getRoute(pathname) {
@@ -1141,6 +1151,10 @@ function renderRoute(pathname) {
     }
   } else if (route.kind === "digest") {
     renderDigestPage(outlet);
+  } else if (route.kind === "test") {
+    renderTestPage(outlet);
+  } else if (route.kind === "ship") {
+    renderShipPage(outlet);
   }
 
   updateActiveNav(pathname);
@@ -1687,3 +1701,115 @@ document.addEventListener("DOMContentLoaded", () => {
   setupNav();
   renderRoute(window.location.pathname || "/");
 });
+const TEST_ITEMS = [
+  { id: "pref_persist", label: "Preferences persist after refresh", tip: "Set preferences, refresh page, check if fields remain filled." },
+  { id: "score_calc", label: "Match score calculates correctly", tip: "Verify score badge updates based on matching criteria." },
+  { id: "toggle_matches", label: '"Show only matches" toggle works', tip: "Toggle switch on dashboard and confirm jobs are filtered by threshold." },
+  { id: "save_persist", label: "Save job persists after refresh", tip: "Save a job, refresh, and check Saved tab." },
+  { id: "apply_tab", label: "Apply opens in new tab", tip: "Click Apply and confirm it doesn't navigate away from the app." },
+  { id: "status_persist", label: "Status update persists after refresh", tip: "Change a status to Applied, refresh, check badge." },
+  { id: "status_filter", label: "Status filter works correctly", tip: "Filter by 'Applied' and confirm only those show." },
+  { id: "digest_top10", label: "Digest generates top 10 by score", tip: "Generate digest and verify jobs are the highest matches." },
+  { id: "digest_persist", label: "Digest persists for the day", tip: "Refresh digest page; today's digest should still be there." },
+  { id: "no_errors", label: "No console errors on main pages", tip: "Open DevTools and browse and verify no red logs." },
+];
+
+function loadTestStatus() {
+  const raw = localStorage.getItem("jobTrackerTestStatus");
+  return raw ? JSON.parse(raw) : {};
+}
+
+function saveTestStatus(status) {
+  localStorage.setItem("jobTrackerTestStatus", JSON.stringify(status));
+}
+
+function renderTestPage(outlet) {
+  const status = loadTestStatus();
+  const passedCount = TEST_ITEMS.filter(item => status[item.id]).length;
+  const allPassed = passedCount === TEST_ITEMS.length;
+
+  outlet.innerHTML = `
+    <article class="card">
+      <header class="card__header" style="display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+          <h2 class="heading-lg">Tests Passed: ${passedCount} / ${TEST_ITEMS.length}</h2>
+          ${!allPassed ? '<p class="body-sm" style="color: var(--color-error); margin-top: 8px;">Resolve all issues before shipping.</p>' : '<p class="body-sm" style="color: var(--color-success); margin-top: 8px;">System ready for release.</p>'}
+        </div>
+        <button class="btn btn--secondary btn--sm" id="reset-tests">Reset Test Status</button>
+      </header>
+      <div class="card__body stack stack--16">
+        <div class="stack stack--8">
+          ${TEST_ITEMS.map(item => `
+            <label class="check-item body-md" style="padding: 12px; border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); cursor: pointer;">
+              <input type="checkbox" data-test-id="${item.id}" ${status[item.id] ? 'checked' : ''} />
+              <div style="flex: 1;">
+                <span style="font-weight: 500">${item.label}</span>
+                <p class="body-xs" style="color: var(--color-text-soft); margin-top: 2px;">Tip: ${item.tip}</p>
+              </div>
+            </label>
+          `).join('')}
+        </div>
+        <div style="margin-top: 24px;">
+           <button class="btn btn--primary" onclick="handleNavigation('/jt/08-ship')" ${!allPassed ? 'disabled' : ''}>
+             ${allPassed ? 'Proceed to Shipping' : 'Complete All Tests to Unlock Shipping'}
+           </button>
+        </div>
+      </div>
+    </article>
+  `;
+
+  outlet.querySelectorAll('input[data-test-id]').forEach(input => {
+    input.addEventListener('change', () => {
+      const current = loadTestStatus();
+      current[input.dataset.testId] = input.checked;
+      saveTestStatus(current);
+      renderTestPage(outlet);
+    });
+  });
+
+  const resetBtn = outlet.querySelector('#reset-tests');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      if (confirm('Reset all test results?')) {
+        saveTestStatus({});
+        renderTestPage(outlet);
+      }
+    });
+  }
+}
+
+function renderShipPage(outlet) {
+  const status = loadTestStatus();
+  const allPassed = TEST_ITEMS.every(item => status[item.id]);
+
+  if (!allPassed) {
+    outlet.innerHTML = `
+      <div class="jobs-list__empty">
+        <div class="empty-state__icon">🔒</div>
+        <h2 class="heading-lg">Shipping Locked</h2>
+        <p class="body-md text-max-width">Complete all tests before shipping.</p>
+        <button class="btn btn--secondary" onclick="handleNavigation('/jt/07-test')">Go to Checklist</button>
+      </div>
+    `;
+    return;
+  }
+
+  outlet.innerHTML = `
+    <article class="card">
+      <header class="card__header">
+        <h2 class="heading-lg">Ready to Ship</h2>
+        <p class="body-sm">All quality checks passed. The application is stable and verified.</p>
+      </header>
+      <div class="card__body stack stack--24">
+        <div style="padding: 40px; text-align: center; background: var(--color-success-soft); border-radius: var(--radius-md); border: 2px dashed var(--color-success);">
+           <span style="font-size: 48px;">🚀</span>
+           <h3 class="heading-md" style="margin-top: 16px;">System Deployment Clear</h3>
+           <p class="body-sm">Final Build: v1.0.0-PROD</p>
+        </div>
+        <div>
+           <button class="btn btn--primary" onclick="alert('Proceeding to delivery pipeline...')">Execute Final Deployment</button>
+        </div>
+      </div>
+    </article>
+  `;
+}
