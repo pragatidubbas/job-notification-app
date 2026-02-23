@@ -11,35 +11,28 @@
       <!-- Top Bar -->
       <header class="top-bar">
         <div class="top-bar__left">
-          <span class="top-bar__app-name">Job Notification App</span>
+          <span class="top-bar__app-name">Job Tracker</span>
         </div>
         <div class="top-bar__center">
           <nav class="main-nav" aria-label="Primary">
-            <button class="main-nav__toggle" type="button" aria-expanded="false" aria-controls="main-nav-menu">
-              <span class="main-nav__toggle-line"></span>
-              <span class="main-nav__toggle-line"></span>
-            </button>
             <div class="main-nav__menu" id="main-nav-menu">
-              <a href="/" data-route="/dashboard" class="main-nav__link">Dashboard</a>
+              <a href="/dashboard" data-route="/dashboard" class="main-nav__link">Dashboard</a>
               <a href="/saved" data-route="/saved" class="main-nav__link">Saved</a>
-              <a href="/digest" data-route="/digest" class="main-nav__link">Digest</a>
-              <a href="/settings" data-route="/settings" class="main-nav__link">Settings</a>
-              <a href="/proof" data-route="/proof" class="main-nav__link">Proof</a>
             </div>
           </nav>
         </div>
         <div class="top-bar__right">
-          <span class="badge badge--status badge--status-muted">Not Started</span>
+          <span class="badge badge--status badge--status-active">Live</span>
         </div>
       </header>
 
       <!-- Context Header -->
       <section class="context-header">
         <div class="context-header__content">
-          <h1 class="heading-xl" id="context-title">Design System Foundation</h1>
+          <h1 class="heading-xl" id="context-title">Precision Discovery</h1>
           <p class="body-md">
             <span id="context-subtitle">
-              A coherent interface layer for the Job Notification App. Structured for calm, reliable, production-grade use.
+              The premium gateway to India's most relevant tech roles.
             </span>
           </p>
         </div>
@@ -47,58 +40,10 @@
 
       <!-- Main Layout -->
       <main class="layout">
-        <!-- Primary Workspace (70%) -->
-        <section class="layout__primary">
+        <!-- Primary Workspace (Full width for simplicity as requested "clean rendering") -->
+        <section class="layout__primary" style="grid-column: span 2;">
           <div class="route-outlet" id="route-outlet" aria-live="polite"></div>
         </section>
-
-        <!-- Secondary Panel (30%) -->
-        <aside class="layout__secondary">
-          <article class="card">
-            <header class="card__header">
-              <h2 class="heading-md">Step explanation</h2>
-              <p class="body-sm card__subtitle">
-                Use this panel to keep each configuration step grounded and specific.
-              </p>
-            </header>
-            <div class="card__body stack stack--24">
-              <section class="stack stack--16">
-                <h3 class="heading-sm">Purpose</h3>
-                <p class="body-sm text-max-width">
-                  Explain what the current step achieves in direct language. Avoid marketing claims. Focus on outcomes the user can verify.
-                </p>
-              </section>
-
-              <section class="stack stack--16">
-                <h3 class="heading-sm">Copyable prompt</h3>
-                <div class="prompt-box">
-                  <pre class="prompt-box__content body-sm">Define one clear notification rule. Specify:
-- Role level
-- Location preference
-- Notification channel</pre>
-                  <button class="btn btn--secondary prompt-box__button" type="button">
-                    Copy guidance
-                  </button>
-                </div>
-              </section>
-
-              <section class="stack stack--16">
-                <h3 class="heading-sm">Actions</h3>
-                <div class="stack stack--16">
-                  <button class="btn btn--primary" type="button">Continue to configuration</button>
-                  <button class="btn btn--ghost" type="button">Save and finish later</button>
-                </div>
-              </section>
-
-              <section class="stack stack--16">
-                <h3 class="heading-sm">Empty & error guidance</h3>
-                <p class="body-sm text-max-width">
-                  When there are no rules defined, show a brief explanation and a single, calm call to action. When something goes wrong, state what happened, what remains safe, and how to move forward.
-                </p>
-              </section>
-            </div>
-          </article>
-        </aside>
       </main>
 
       <!-- Proof Footer -->
